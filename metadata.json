@@ -1,0 +1,6 @@
+{
+  "name": "COOL VOICE",
+  "description": "Application Android de transformation vocale en temps réel avec 12 effets DSP hors-ligne.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

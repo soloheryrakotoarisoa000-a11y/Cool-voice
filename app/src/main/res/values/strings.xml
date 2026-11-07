@@ -1,0 +1,135 @@
+<resources>
+    <string name="app_name">COOL VOICE</string>
+    <string name="app_slogan">Transforme ta voix. Libère ta créativité.</string>
+    <string name="creator_name">Solohery RAKOTOARISOA</string>
+    <string name="developed_by">Conçu et développé par Solohery RAKOTOARISOA</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Accueil</string>
+    <string name="nav_studio">Studio</string>
+    <string name="nav_library">Bibliothèque</string>
+    <string name="nav_settings">Paramètres</string>
+
+    <!-- Home -->
+    <string name="home_welcome_title">Studio Vocal en Temps Réel</string>
+    <string name="home_welcome_subtitle">Parle dans ton micro et entends instantanément ta voix métamorphosée grâce au moteur DSP 100% local.</string>
+    <string name="home_btn_open_studio">Ouvrir le Studio Vocal</string>
+    <string name="home_quick_effects">12 Effets Vocaux Disponibles</string>
+    <string name="home_quick_effects_sub">Sélectionne un effet pour tester immédiatement dans le studio</string>
+    <string name="home_stats_offline">Mode 100% Hors-ligne</string>
+    <string name="home_stats_offline_desc">Aucune connexion requise, confidentialité totale</string>
+    <string name="home_stats_dsp">Moteur DSP Faible Latence</string>
+    <string name="home_stats_dsp_desc">Traitement continu par AudioRecord et AudioTrack</string>
+    <string name="home_quick_recordings">Derniers enregistrements</string>
+    <string name="home_view_all_recordings">Voir tous les enregistrements</string>
+
+    <!-- Studio -->
+    <string name="studio_title">Studio Vocal</string>
+    <string name="studio_status_ready">Microphone en veille</string>
+    <string name="studio_status_active">Transformation vocale en direct</string>
+    <string name="studio_status_recording">Enregistrement en cours…</string>
+    <string name="studio_btn_start">Démarrer l\'écoute</string>
+    <string name="studio_btn_stop">Arrêter l\'écoute</string>
+    <string name="studio_btn_record">Enregistrer</string>
+    <string name="studio_btn_stop_record">Arrêter l\'enregistrement</string>
+    <string name="studio_param_intensity">Intensité de l\'effet</string>
+    <string name="studio_param_pitch">Hauteur / Tonalité</string>
+    <string name="studio_param_depth">Profondeur &amp; Résonance</string>
+    <string name="studio_param_output_vol">Volume de sortie</string>
+    <string name="studio_output_device">Périphérique de sortie :</string>
+    <string name="studio_device_speaker">Haut-parleur du téléphone</string>
+    <string name="studio_device_headphones">Casque / Écouteurs filaires</string>
+    <string name="studio_device_bluetooth">Casque Bluetooth</string>
+    <string name="studio_feedback_warning">Avertissement : L\'écoute directe sur haut-parleur peut générer du larsen (effet Larsen). Il est recommandé d\'utiliser des écouteurs pour une clarté optimale.</string>
+
+    <!-- 12 Effets -->
+    <string name="fx_robot_title">Robot</string>
+    <string name="fx_robot_desc">Voix robotisée mécanique avec modulation en anneau et distorsion contrôlée.</string>
+
+    <string name="fx_woman_title">Femme</string>
+    <string name="fx_woman_desc">Transformation acoustique vers une voix féminine (hausse de hauteur et égalisation formantique).</string>
+
+    <string name="fx_man_title">Homme</string>
+    <string name="fx_man_desc">Transformation acoustique vers une voix masculine (baisse de hauteur et résonance grave).</string>
+
+    <string name="fx_child_title">Enfant</string>
+    <string name="fx_child_desc">Voix enfantine vive et enjouée avec transposition aiguë et clarté.</string>
+
+    <string name="fx_monster_title">Monstre</string>
+    <string name="fx_monster_desc">Voix sombre d\'outre-tombe avec transposition grave profonde et saturation agressive.</string>
+
+    <string name="fx_deep_title">Grave</string>
+    <string name="fx_deep_desc">Voix profonde et chaleureuse avec amplification des basses fréquences.</string>
+
+    <string name="fx_high_title">Aiguë</string>
+    <string name="fx_high_desc">Voix festive hyper aiguë et ludique sans altération du tempo.</string>
+
+    <string name="fx_echo_title">Écho</string>
+    <string name="fx_echo_desc">Effet d\'écho spatialisé multi-taps et simulation de réverbération progressive.</string>
+
+    <string name="fx_alien_title">Extraterrestre</string>
+    <string name="fx_alien_desc">Modulation spatiale extraterrestre à double oscillateur et trémolo cosmique.</string>
+
+    <string name="fx_cartoon_title">Dessin Animé</string>
+    <string name="fx_cartoon_desc">Voix de personnage animé humoristique avec modulation de fréquence dynamique.</string>
+
+    <string name="fx_elderly_title">Personne Âgée</string>
+    <string name="fx_elderly_desc">Transformation stylisée avec tremblotement vocal naturel et bande passante filtrée.</string>
+
+    <string name="fx_baby_title">Bébé</string>
+    <string name="fx_baby_desc">Transformation mignonne très aiguë avec micro-modulations expressives.</string>
+
+    <!-- Disclaimer acoustique -->
+    <string name="effects_disclaimer_notice">Note : Les effets Femme, Homme, Enfant, Personne âgée et Bébé reposent sur des filtres et transpositions DSP acoustiques temps réel avancés, sans dépendre d\'un serveur distant.</string>
+
+    <!-- Library -->
+    <string name="library_title">Bibliothèque Audio</string>
+    <string name="library_empty_title">Aucun enregistrement pour le moment</string>
+    <string name="library_empty_desc">Ouvre le Studio Vocal, active un effet et clique sur Enregistrer pour créer ton premier fichier audio !</string>
+    <string name="library_format_wav">WAV PCM 16-bit 44.1 kHz</string>
+    <string name="library_play">Lire</string>
+    <string name="library_pause">Pause</string>
+    <string name="library_rename">Renommer</string>
+    <string name="library_delete">Supprimer</string>
+    <string name="library_share">Partager</string>
+    <string name="library_delete_confirm_title">Supprimer cet enregistrement ?</string>
+    <string name="library_delete_confirm_msg">Le fichier audio sera définitivement supprimé de la mémoire de l\'appareil.</string>
+    <string name="library_rename_title">Renommer l\'enregistrement</string>
+    <string name="library_action_cancel">Annuler</string>
+    <string name="library_action_confirm">Confirmer</string>
+    <string name="library_action_save">Enregistrer</string>
+    <string name="library_share_title">Partager l\'enregistrement COOL VOICE</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Paramètres</string>
+    <string name="settings_group_appearance">Apparence</string>
+    <string name="settings_theme_title">Thème de l\'interface</string>
+    <string name="settings_theme_system">Thème du système</string>
+    <string name="settings_theme_dark">Thème Sombre</string>
+    <string name="settings_theme_light">Thème Clair</string>
+
+    <string name="settings_group_audio">Performances &amp; Audio</string>
+    <string name="settings_sample_rate_title">Fréquence d\'échantillonnage</string>
+    <string name="settings_sample_rate_44k">44.1 kHz (Standard Hi-Fi)</string>
+    <string name="settings_sample_rate_48k">48.0 kHz (Haute Définition)</string>
+    <string name="settings_sample_rate_22k">22.05 kHz (Basse Consommation)</string>
+
+    <string name="settings_anti_feedback">Protection Anti-Larsen</string>
+    <string name="settings_anti_feedback_desc">Réduit automatiquement le gain de sortie lorsqu\'aucun casque n\'est branché pour prévenir le sifflement</string>
+
+    <string name="settings_group_about">À propos de COOL VOICE</string>
+    <string name="settings_version_title">Version</string>
+    <string name="settings_version_val">1.0.0 (DSP Engine Pro)</string>
+    <string name="settings_creator_title">Créateur</string>
+    <string name="settings_creator_val">Solohery RAKOTOARISOA</string>
+    <string name="settings_privacy_title">Confidentialité &amp; Sécurité</string>
+    <string name="settings_privacy_desc">Traitement 100% local. Aucune donnée vocale, aucun son ni aucun fichier n\'est transmis à un serveur extérieur. Fonctionne totalement hors-ligne sans connexion Internet.</string>
+
+    <string name="settings_calls_disclaimer_title">Compatibilité Appels Externes</string>
+    <string name="settings_calls_disclaimer_desc">Conformément aux restrictions de sécurité du système Android, aucune application tierce standard ne peut intercepter ni injecter de signal audio transformé dans les appels GSM, WhatsApp, Messenger ou Telegram. COOL VOICE ne propose aucun faux bouton ni simulation trompeuse.</string>
+
+    <!-- Permissions -->
+    <string name="permission_mic_title">Autorisation Microphone requise</string>
+    <string name="permission_mic_desc">COOL VOICE a besoin de l\'accès au microphone pour capturer votre voix en temps réel, appliquer les effets DSP et vous permettre de vous écouter ou de vous enregistrer.</string>
+    <string name="permission_mic_btn">Autoriser le Microphone</string>
+</resources>
