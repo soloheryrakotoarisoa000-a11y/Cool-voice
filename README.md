@@ -126,16 +126,20 @@ app/src/main/
 - Android SDK 34 ou supérieur (minSdk = 24, supporte Android 7.0 à 15+).
 - Java 17 ou 21.
 
-### Commandes Gradle
-- **Lancer les tests unitaires et Robolectric :**
+### Commandes Gradle & Fichier APK
+- **Fichier APK directement disponible dans les sources :**
+  - **`COOL_VOICE.apk`** (situé à la racine du projet et directement visible dans l'arborescence des fichiers)
+  - `app/COOL_VOICE.apk`
+  - `app/build/outputs/apk/debug/app-debug.apk`
+
+- **Lancer les tests unitaires :**
   ```bash
   gradle :app:testDebugUnitTest
   ```
-- **Compiler l'APK de débogage :**
+- **Recompiler l'APK de débogage :**
   ```bash
   gradle :app:assembleDebug
   ```
-  L'APK généré sera situé dans `app/build/outputs/apk/debug/app-debug.apk`.
 
 ---
 
