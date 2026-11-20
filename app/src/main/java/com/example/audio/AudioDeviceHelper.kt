@@ -44,6 +44,11 @@ class AudioDeviceHelper(private val context: Context) {
         }
     }
 
+    fun getNativeSampleRate(): Int {
+        val rateStr = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)
+        return rateStr?.toIntOrNull()?.takeIf { it in 8000..96000 } ?: 44100
+    }
+
     fun detectCurrentDevice(): AudioDeviceState {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
@@ -60,11 +65,24 @@ class AudioDeviceHelper(private val context: Context) {
                     }
                     AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
                     AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> {
+                        val name = device.productName?.toString()?.ifBlank { "Sans fil" } ?: "Sans fil"
                         return AudioDeviceState(
                             isHeadphonesConnected = true,
                             isBluetooth = true,
-                            deviceName = "Casque Bluetooth (${device.productName.ifEmpty { "Sans fil" }})"
+                            deviceName = "Bluetooth ($name)"
                         )
+                    }
+                    else -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                            device.type == AudioDeviceInfo.TYPE_BLE_HEADSET
+                        ) {
+                            val name = device.productName?.toString()?.ifBlank { "BLE" } ?: "BLE"
+                            return AudioDeviceState(
+                                isHeadphonesConnected = true,
+                                isBluetooth = true,
+                                deviceName = "Bluetooth LE ($name)"
+                            )
+                        }
                     }
                 }
             }

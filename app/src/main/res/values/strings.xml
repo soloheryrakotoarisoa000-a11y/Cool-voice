@@ -12,7 +12,7 @@
 
     <!-- Home -->
     <string name="home_welcome_title">Studio Vocal en Temps Réel</string>
-    <string name="home_welcome_subtitle">Parle dans ton micro et entends instantanément ta voix métamorphosée grâce au moteur DSP 100% local.</string>
+    <string name="home_welcome_subtitle">Parle dans ton micro et entends instantanément ta voix métamorphosée grâce au moteur DSP 100% local, avec ou sans écouteurs.</string>
     <string name="home_btn_open_studio">Ouvrir le Studio Vocal</string>
     <string name="home_quick_effects">12 Effets Vocaux Disponibles</string>
     <string name="home_quick_effects_sub">Sélectionne un effet pour tester immédiatement dans le studio</string>
@@ -26,12 +26,12 @@
     <!-- Studio -->
     <string name="studio_title">Studio Vocal</string>
     <string name="studio_status_ready">Microphone en veille</string>
-    <string name="studio_status_active">Transformation vocale en direct</string>
+    <string name="studio_status_active">Écoute en direct active</string>
     <string name="studio_status_recording">Enregistrement en cours…</string>
-    <string name="studio_btn_start">Démarrer l\'écoute</string>
-    <string name="studio_btn_stop">Arrêter l\'écoute</string>
+    <string name="studio_btn_start">Écoute Directe</string>
+    <string name="studio_btn_stop">Arrêter Écoute</string>
     <string name="studio_btn_record">Enregistrer</string>
-    <string name="studio_btn_stop_record">Arrêter l\'enregistrement</string>
+    <string name="studio_btn_stop_record">Arrêter</string>
     <string name="studio_param_intensity">Intensité de l\'effet</string>
     <string name="studio_param_pitch">Hauteur / Tonalité</string>
     <string name="studio_param_depth">Profondeur &amp; Résonance</string>
@@ -40,7 +40,10 @@
     <string name="studio_device_speaker">Haut-parleur du téléphone</string>
     <string name="studio_device_headphones">Casque / Écouteurs filaires</string>
     <string name="studio_device_bluetooth">Casque Bluetooth</string>
-    <string name="studio_feedback_warning">Avertissement : L\'écoute directe sur haut-parleur peut générer du larsen (effet Larsen). Il est recommandé d\'utiliser des écouteurs pour une clarté optimale.</string>
+    <string name="studio_speaker_mode_tip">Mode Haut-Parleur actif : le filtre anti-larsen et la porte de bruit protègent votre écoute directe sans casque.</string>
+    <string name="studio_monitor_toggle_title">Retour haut-parleur pendant l\'enregistrement</string>
+    <string name="studio_monitor_toggle_desc">Désactiver évite l\'écho sur haut-parleur pour un fichier WAV ultra net (réécoute immédiate après arrêt).</string>
+    <string name="studio_last_recording_title">Enregistrement terminé</string>
 
     <!-- 12 Effets -->
     <string name="fx_robot_title">Robot</string>
@@ -86,7 +89,7 @@
     <string name="library_title">Bibliothèque Audio</string>
     <string name="library_empty_title">Aucun enregistrement pour le moment</string>
     <string name="library_empty_desc">Ouvre le Studio Vocal, active un effet et clique sur Enregistrer pour créer ton premier fichier audio !</string>
-    <string name="library_format_wav">WAV PCM 16-bit 44.1 kHz</string>
+    <string name="library_format_wav">WAV PCM 16-bit</string>
     <string name="library_play">Lire</string>
     <string name="library_pause">Pause</string>
     <string name="library_rename">Renommer</string>
@@ -114,12 +117,12 @@
     <string name="settings_sample_rate_48k">48.0 kHz (Haute Définition)</string>
     <string name="settings_sample_rate_22k">22.05 kHz (Basse Consommation)</string>
 
-    <string name="settings_anti_feedback">Protection Anti-Larsen</string>
-    <string name="settings_anti_feedback_desc">Réduit automatiquement le gain de sortie lorsqu\'aucun casque n\'est branché pour prévenir le sifflement</string>
+    <string name="settings_anti_feedback">Protection Anti-Larsen DSP</string>
+    <string name="settings_anti_feedback_desc">Active la porte de bruit adaptative et le limiteur anti-sifflement lors de l\'écoute sur le haut-parleur sans casque</string>
 
     <string name="settings_group_about">À propos de COOL VOICE</string>
     <string name="settings_version_title">Version</string>
-    <string name="settings_version_val">1.0.0 (DSP Engine Pro)</string>
+    <string name="settings_version_val">1.1.0 (Pro Studio DSP)</string>
     <string name="settings_creator_title">Créateur</string>
     <string name="settings_creator_val">Solohery RAKOTOARISOA</string>
     <string name="settings_privacy_title">Confidentialité &amp; Sécurité</string>
@@ -132,4 +135,6 @@
     <string name="permission_mic_title">Autorisation Microphone requise</string>
     <string name="permission_mic_desc">COOL VOICE a besoin de l\'accès au microphone pour capturer votre voix en temps réel, appliquer les effets DSP et vous permettre de vous écouter ou de vous enregistrer.</string>
     <string name="permission_mic_btn">Autoriser le Microphone</string>
+    <string name="permission_denied_banner">Permission microphone refusée. Activez-la dans les paramètres pour écouter ou enregistrer votre voix.</string>
+    <string name="permission_open_settings">Paramètres</string>
 </resources>

@@ -27,7 +27,7 @@ import java.util.Locale
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val audioEngine = AudioEngine(application)
-    private val audioPlayer = AudioPlayer()
+    private val audioPlayer = AudioPlayer(application)
     private val database = AppDatabase.getInstance(application)
     private val recordingDao = database.recordingDao()
     private val appSettings = AppSettings(application)
@@ -36,6 +36,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val visualizerData: StateFlow<FloatArray> = audioEngine.visualizerData
     val playbackState: StateFlow<PlaybackState> = audioPlayer.playbackState
 
+    private val _lastSavedRecording = MutableStateFlow<RecordingEntity?>(null)
+    val lastSavedRecording: StateFlow<RecordingEntity?> = _lastSavedRecording.asStateFlow()
+
     val recordings: StateFlow<List<RecordingEntity>> = recordingDao.getAllRecordings()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -43,7 +46,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserSettings())
 
     init {
-        // Sync settings to engine
         viewModelScope.launch {
             userSettings.collect { settings ->
                 audioEngine.setSampleRate(settings.sampleRate)
@@ -54,7 +56,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // Audio Engine Controls
     fun startAudio(): Boolean {
-        // Stop playback if playing
         audioPlayer.stop()
         return audioEngine.start()
     }
@@ -63,12 +64,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         audioEngine.stop()
     }
 
-    fun toggleAudio() {
-        if (engineState.value.isRunning) {
-            stopAudio()
-        } else {
-            startAudio()
-        }
+    fun setMonitorDuringRecording(enabled: Boolean) {
+        audioEngine.setMonitorDuringRecording(enabled)
     }
 
     fun selectEffect(effect: VoiceEffect) {
@@ -91,9 +88,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         audioEngine.setMasterVolume(value)
     }
 
+    fun clearAudioError() {
+        audioEngine.clearError()
+    }
+
+    fun clearPlaybackError() {
+        audioPlayer.clearError()
+    }
+
     // Recording Controls
     fun startRecording() {
         audioPlayer.stop()
+        _lastSavedRecording.value = null
         audioEngine.startRecording()
     }
 
@@ -104,7 +110,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val currentEffect = engineState.value.activeEffect
                 val dateFormat = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault())
                 val dateFormatted = dateFormat.format(Date())
-                val title = "Voix ${currentEffect.name.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }} ($dateFormatted)"
+                val effectLabel = currentEffect.name.replace("_", " ").lowercase(Locale.getDefault())
+                    .replaceFirstChar { it.uppercase() }
+                val title = "Voix $effectLabel ($dateFormatted)"
 
                 val entity = RecordingEntity(
                     title = title,
@@ -114,17 +122,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     effectName = currentEffect.name,
                     fileSizeBytes = result.fileSizeBytes
                 )
-                recordingDao.insert(entity)
+                val newId = recordingDao.insert(entity)
+                _lastSavedRecording.value = entity.copy(id = newId)
             }
         }
     }
 
+    fun dismissLastRecordingPreview() {
+        if (playbackState.value.currentRecordingId == _lastSavedRecording.value?.id) {
+            audioPlayer.stop()
+        }
+        _lastSavedRecording.value = null
+    }
+
     // Playback Controls
     fun playRecording(recording: RecordingEntity) {
-        val file = File(recording.filePath)
-        if (file.exists()) {
-            audioPlayer.play(recording.id, file)
+        if (engineState.value.isRunning) {
+            audioEngine.stop()
         }
+        val file = File(recording.filePath)
+        audioPlayer.play(recording.id, file)
     }
 
     fun pausePlayback() {
@@ -143,6 +160,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun renameRecording(recording: RecordingEntity, newTitle: String) {
         viewModelScope.launch {
             recordingDao.updateTitle(recording.id, newTitle)
+            if (_lastSavedRecording.value?.id == recording.id) {
+                _lastSavedRecording.value = _lastSavedRecording.value?.copy(title = newTitle)
+            }
         }
     }
 
@@ -151,7 +171,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (playbackState.value.currentRecordingId == recording.id) {
                 audioPlayer.stop()
             }
-            // Delete file from disk
+            if (_lastSavedRecording.value?.id == recording.id) {
+                _lastSavedRecording.value = null
+            }
             try {
                 val file = File(recording.filePath)
                 if (file.exists()) {

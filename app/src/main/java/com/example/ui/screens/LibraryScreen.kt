@@ -108,6 +108,25 @@ fun LibraryScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
+        if (!playbackState.errorMessage.isNullOrBlank()) {
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+            ) {
+                Text(
+                    text = playbackState.errorMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+
         if (recordings.isEmpty()) {
             EmptyLibraryState(onOpenStudio = onOpenStudio)
         } else {

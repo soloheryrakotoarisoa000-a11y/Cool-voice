@@ -1,8 +1,11 @@
 package com.example
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -10,10 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,11 +31,9 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Home
@@ -50,6 +47,10 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,10 +59,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -71,14 +72,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import com.example.audio.effects.VoiceEffect
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.LibraryScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.StudioScreen
 import com.example.ui.theme.CoolVoiceTheme
 import com.example.ui.theme.EmeraldGreen
-import com.example.ui.theme.NeonCyan
+import kotlinx.coroutines.launch
 
 enum class AppScreen {
     HOME, STUDIO, LIBRARY, SETTINGS
@@ -105,6 +105,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainAppScaffold(viewModel: MainViewModel) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
     var currentScreen by remember { mutableStateOf(AppScreen.HOME) }
     var showPermissionRationale by remember { mutableStateOf(false) }
     var pendingActionAfterPermission by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -112,8 +115,12 @@ fun MainAppScaffold(viewModel: MainViewModel) {
     val engineState by viewModel.engineState.collectAsState()
     val visualizerData by viewModel.visualizerData.collectAsState()
     val recordings by viewModel.recordings.collectAsState()
+    val lastSavedRecording by viewModel.lastSavedRecording.collectAsState()
     val playbackState by viewModel.playbackState.collectAsState()
     val userSettings by viewModel.userSettings.collectAsState()
+
+    val deniedBannerText = stringResource(R.string.permission_denied_banner)
+    val openSettingsLabel = stringResource(R.string.permission_open_settings)
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -121,6 +128,22 @@ fun MainAppScaffold(viewModel: MainViewModel) {
         if (isGranted) {
             pendingActionAfterPermission?.invoke()
             pendingActionAfterPermission = null
+        } else {
+            pendingActionAfterPermission = null
+            coroutineScope.launch {
+                val res = snackbarHostState.showSnackbar(
+                    message = deniedBannerText,
+                    actionLabel = openSettingsLabel,
+                    duration = SnackbarDuration.Long
+                )
+                if (res == SnackbarResult.ActionPerformed) {
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                }
+            }
         }
     }
 
@@ -138,13 +161,13 @@ fun MainAppScaffold(viewModel: MainViewModel) {
         }
     }
 
-    // Back button handling
     BackHandler(enabled = currentScreen != AppScreen.HOME) {
         currentScreen = AppScreen.HOME
     }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             NavigationBar(
                 modifier = Modifier
@@ -183,7 +206,7 @@ fun MainAppScaffold(viewModel: MainViewModel) {
                             if (engineState.isRunning) {
                                 Surface(
                                     shape = CircleShape,
-                                    color = EmeraldGreen,
+                                    color = if (engineState.isRecording) Color.Red else EmeraldGreen,
                                     modifier = Modifier
                                         .size(8.dp)
                                         .align(Alignment.TopEnd)
@@ -244,14 +267,12 @@ fun MainAppScaffold(viewModel: MainViewModel) {
                 .padding(innerPadding)
                 .windowInsetsPadding(WindowInsets.statusBars)
         ) {
-            // App Top Header
             AppTopHeader(
                 currentScreen = currentScreen,
                 isAudioRunning = engineState.isRunning,
                 isRecording = engineState.isRecording
             )
 
-            // Screens
             when (currentScreen) {
                 AppScreen.HOME -> HomeScreen(
                     onNavigateToStudio = { initialEffect ->
@@ -271,6 +292,8 @@ fun MainAppScaffold(viewModel: MainViewModel) {
                 AppScreen.STUDIO -> StudioScreen(
                     engineState = engineState,
                     visualizerData = visualizerData,
+                    lastSavedRecording = lastSavedRecording,
+                    playbackState = playbackState,
                     onStartEngine = {
                         requestMicPermission {
                             viewModel.startAudio()
@@ -283,11 +306,17 @@ fun MainAppScaffold(viewModel: MainViewModel) {
                         }
                     },
                     onStopRecording = { viewModel.stopRecording() },
+                    onToggleMonitorDuringRecording = { viewModel.setMonitorDuringRecording(it) },
                     onSelectEffect = { effect -> viewModel.selectEffect(effect) },
                     onIntensityChange = { viewModel.setIntensity(it) },
                     onPitchChange = { viewModel.setPitchFactor(it) },
                     onDepthChange = { viewModel.setDepth(it) },
-                    onVolumeChange = { viewModel.setVolume(it) }
+                    onVolumeChange = { viewModel.setVolume(it) },
+                    onPlayPreview = { rec -> viewModel.playRecording(rec) },
+                    onPausePreview = { viewModel.pausePlayback() },
+                    onDismissPreview = { viewModel.dismissLastRecordingPreview() },
+                    onOpenLibrary = { currentScreen = AppScreen.LIBRARY },
+                    onDismissError = { viewModel.clearAudioError() }
                 )
 
                 AppScreen.LIBRARY -> LibraryScreen(
@@ -311,10 +340,12 @@ fun MainAppScaffold(viewModel: MainViewModel) {
         }
     }
 
-    // Permission Rationale Dialog
     if (showPermissionRationale) {
         AlertDialog(
-            onDismissRequest = { showPermissionRationale = false },
+            onDismissRequest = {
+                showPermissionRationale = false
+                pendingActionAfterPermission = null
+            },
             title = { Text(text = stringResource(R.string.permission_mic_title)) },
             text = { Text(text = stringResource(R.string.permission_mic_desc)) },
             confirmButton = {
@@ -330,7 +361,10 @@ fun MainAppScaffold(viewModel: MainViewModel) {
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showPermissionRationale = false },
+                    onClick = {
+                        showPermissionRationale = false
+                        pendingActionAfterPermission = null
+                    },
                     modifier = Modifier.testTag("grant_permission_cancel_button")
                 ) {
                     Text(stringResource(R.string.library_action_cancel))
@@ -381,7 +415,7 @@ private fun AppTopHeader(
                 Text(
                     text = when (currentScreen) {
                         AppScreen.HOME -> "Tableau de Bord"
-                        AppScreen.STUDIO -> "Studio DSP en direct"
+                        AppScreen.STUDIO -> "Studio DSP Pro"
                         AppScreen.LIBRARY -> "Mes Fichiers WAV"
                         AppScreen.SETTINGS -> "Configuration & À propos"
                     },
@@ -391,7 +425,6 @@ private fun AppTopHeader(
             }
         }
 
-        // Live badge
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (isRecording) {
                 Surface(

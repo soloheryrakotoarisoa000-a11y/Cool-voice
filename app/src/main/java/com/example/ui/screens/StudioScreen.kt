@@ -2,8 +2,8 @@ package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,30 +22,37 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -56,11 +63,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.audio.AudioEngineState
+import com.example.audio.PlaybackState
 import com.example.audio.effects.VoiceEffect
+import com.example.database.RecordingEntity
 import com.example.ui.components.EffectSelectorCard
 import com.example.ui.components.WaveformVisualizer
 import com.example.ui.theme.EmeraldGreen
@@ -71,65 +81,114 @@ import java.util.Locale
 fun StudioScreen(
     engineState: AudioEngineState,
     visualizerData: FloatArray,
+    lastSavedRecording: RecordingEntity?,
+    playbackState: PlaybackState,
     onStartEngine: () -> Unit,
     onStopEngine: () -> Unit,
     onStartRecording: () -> Unit,
     onStopRecording: () -> Unit,
+    onToggleMonitorDuringRecording: (Boolean) -> Unit,
     onSelectEffect: (VoiceEffect) -> Unit,
     onIntensityChange: (Float) -> Unit,
     onPitchChange: (Float) -> Unit,
     onDepthChange: (Float) -> Unit,
     onVolumeChange: (Float) -> Unit,
+    onPlayPreview: (RecordingEntity) -> Unit,
+    onPausePreview: () -> Unit,
+    onDismissPreview: () -> Unit,
+    onOpenLibrary: () -> Unit,
+    onDismissError: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var intensity by remember { mutableFloatStateOf(engineState.activeEffect.defaultIntensity) }
-    var pitchFactor by remember { mutableFloatStateOf(engineState.activeEffect.defaultPitchFactor) }
-    var depth by remember { mutableFloatStateOf(engineState.activeEffect.defaultDepth) }
-    var outputVolume by remember { mutableFloatStateOf(1.0f) }
     var showAdvancedParams by remember { mutableStateOf(false) }
+    var showAllEffectsList by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Status header & device indicator
+        // Status header & device/telemetry indicator
         item {
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             StatusAndDeviceBar(engineState = engineState)
         }
 
-        // Real-time Waveform Visualizer
-        item {
-            WaveformVisualizer(
-                visualizerData = visualizerData,
-                isActive = engineState.isRunning
-            )
+        // Actionable Error Banner (if any audio initialization or mic error occurred)
+        if (!engineState.errorMessage.isNullOrBlank()) {
+            item {
+                ErrorAlertCard(
+                    message = engineState.errorMessage,
+                    onDismiss = onDismissError
+                )
+            }
         }
 
-        // Live Controls: Start/Stop & Record
+        // Real-time Waveform Visualizer + Live Mic VU Meter
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                WaveformVisualizer(
+                    visualizerData = visualizerData,
+                    isActive = engineState.isRunning
+                )
+                MicInputMeter(
+                    level = engineState.micInputLevel,
+                    isActive = engineState.isRunning
+                )
+            }
+        }
+
+        // Live Controls: Direct Listening & Recording
         item {
             PrimaryControlBar(
+                isListening = engineState.isRunning && engineState.isMonitoringOutput && !engineState.isRecording,
                 isRunning = engineState.isRunning,
                 isRecording = engineState.isRecording,
                 sessionSeconds = engineState.sessionDurationSeconds,
                 recordingSeconds = engineState.recordingDurationSeconds,
-                onStart = onStartEngine,
-                onStop = onStopEngine,
+                onStartListening = onStartEngine,
+                onStopListening = onStopEngine,
                 onStartRecord = onStartRecording,
                 onStopRecord = onStopRecording
             )
         }
 
-        // Feedback / Larsen warning banner if on phone speaker
-        if (engineState.isFeedbackProtectionActive) {
+        // Instant Studio Preview Player after stopping a recording
+        if (lastSavedRecording != null && !engineState.isRecording) {
             item {
-                FeedbackWarningBanner()
+                val isPlayingThis = playbackState.currentRecordingId == lastSavedRecording.id && playbackState.isPlaying
+                val progress = if (playbackState.currentRecordingId == lastSavedRecording.id && playbackState.durationMs > 0) {
+                    (playbackState.currentPositionMs.toFloat() / playbackState.durationMs).coerceIn(0f, 1f)
+                } else {
+                    0f
+                }
+
+                InstantRecordingPreviewCard(
+                    recording = lastSavedRecording,
+                    isPlaying = isPlayingThis,
+                    progress = progress,
+                    onPlayPause = {
+                        if (isPlayingThis) onPausePreview() else onPlayPreview(lastSavedRecording)
+                    },
+                    onOpenLibrary = onOpenLibrary,
+                    onDismiss = onDismissPreview
+                )
             }
         }
 
-        // 12 Effects selector Carousel / Grid
+        // Speaker Mode Pro Options (when no headphones plugged in)
+        if (!engineState.isHeadphonesConnected) {
+            item {
+                SpeakerStudioOptionsCard(
+                    monitorDuringRecording = engineState.monitorDuringRecording,
+                    antiFeedbackActive = engineState.isFeedbackProtectionActive,
+                    onToggleMonitorDuringRecording = onToggleMonitorDuringRecording
+                )
+            }
+        }
+
+        // 12 Effects selector Carousel / All Effects toggle
         item {
             Column {
                 Row(
@@ -138,24 +197,23 @@ fun StudioScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Effet Vocal Sélectionné",
+                        text = "Effet Vocal (${VoiceEffect.values().indexOf(engineState.activeEffect) + 1}/12)",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onBackground
                     )
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        Text(
-                            text = "${VoiceEffect.values().indexOf(engineState.activeEffect) + 1}/12",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                        )
-                    }
+                    Text(
+                        text = if (showAllEffectsList) "Vue compacte" else "Voir les 12 effets",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        modifier = Modifier
+                            .clickable { showAllEffectsList = !showAllEffectsList }
+                            .padding(vertical = 4.dp, horizontal = 6.dp)
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -165,28 +223,36 @@ fun StudioScreen(
                         EffectMiniTab(
                             effect = effect,
                             isSelected = effect == engineState.activeEffect,
-                            onClick = {
-                                onSelectEffect(effect)
-                                intensity = effect.defaultIntensity
-                                pitchFactor = effect.defaultPitchFactor
-                                depth = effect.defaultDepth
-                            }
+                            onClick = { onSelectEffect(effect) }
                         )
                     }
                 }
             }
         }
 
-        // Active Effect Details Card
-        item {
-            EffectSelectorCard(
-                effect = engineState.activeEffect,
-                isSelected = true,
-                onClick = {}
-            )
+        // Expanded list of all 12 effects or active effect detail card
+        if (showAllEffectsList) {
+            items(VoiceEffect.values()) { effect ->
+                EffectSelectorCard(
+                    effect = effect,
+                    isSelected = effect == engineState.activeEffect,
+                    onClick = {
+                        onSelectEffect(effect)
+                        showAllEffectsList = false
+                    }
+                )
+            }
+        } else {
+            item {
+                EffectSelectorCard(
+                    effect = engineState.activeEffect,
+                    isSelected = true,
+                    onClick = { showAllEffectsList = true }
+                )
+            }
         }
 
-        // Sliders Section
+        // Audio DSP Sliders Section
         item {
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -202,7 +268,7 @@ fun StudioScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Ajustements Sonores",
+                            text = "Ajustements Sonores DSP",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -219,76 +285,60 @@ fun StudioScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // Intensity Slider
                     SliderRow(
                         title = stringResource(R.string.studio_param_intensity),
-                        value = intensity,
-                        valueDisplay = "${(intensity * 100).toInt()}%",
-                        onValueChange = {
-                            intensity = it
-                            onIntensityChange(it)
-                        }
+                        value = engineState.intensity,
+                        valueDisplay = "${(engineState.intensity * 100).toInt()}%",
+                        onValueChange = onIntensityChange
                     )
 
-                    // Output Volume Slider
                     SliderRow(
                         title = stringResource(R.string.studio_param_output_vol),
-                        value = outputVolume,
+                        value = engineState.masterVolume,
                         valueRange = 0.0f..1.5f,
-                        valueDisplay = "${(outputVolume * 100).toInt()}%",
-                        onValueChange = {
-                            outputVolume = it
-                            onVolumeChange(it)
-                        }
+                        valueDisplay = "${(engineState.masterVolume * 100).toInt()}%",
+                        onValueChange = onVolumeChange
                     )
 
                     AnimatedVisibility(visible = showAdvancedParams) {
                         Column {
-                            Spacer(modifier = Modifier.height(10.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                            // Pitch Slider
                             SliderRow(
                                 title = stringResource(R.string.studio_param_pitch),
-                                value = pitchFactor,
+                                value = engineState.pitchFactor,
                                 valueRange = 0.5f..2.0f,
-                                valueDisplay = String.format(Locale.getDefault(), "%.2fx", pitchFactor),
-                                onValueChange = {
-                                    pitchFactor = it
-                                    onPitchChange(it)
-                                }
+                                valueDisplay = String.format(Locale.getDefault(), "%.2fx", engineState.pitchFactor),
+                                onValueChange = onPitchChange
                             )
 
-                            // Depth Slider
                             SliderRow(
                                 title = stringResource(R.string.studio_param_depth),
-                                value = depth,
-                                valueDisplay = "${(depth * 100).toInt()}%",
-                                onValueChange = {
-                                    depth = it
-                                    onDepthChange(it)
-                                }
+                                value = engineState.depth,
+                                valueDisplay = "${(engineState.depth * 100).toInt()}%",
+                                onValueChange = onDepthChange
                             )
 
                             Spacer(modifier = Modifier.height(6.dp))
 
                             OutlinedButton(
                                 onClick = {
-                                    intensity = engineState.activeEffect.defaultIntensity
-                                    pitchFactor = engineState.activeEffect.defaultPitchFactor
-                                    depth = engineState.activeEffect.defaultDepth
-                                    outputVolume = 1.0f
-                                    onIntensityChange(intensity)
-                                    onPitchChange(pitchFactor)
-                                    onDepthChange(depth)
-                                    onVolumeChange(outputVolume)
+                                    onIntensityChange(engineState.activeEffect.defaultIntensity)
+                                    onPitchChange(engineState.activeEffect.defaultPitchFactor)
+                                    onDepthChange(engineState.activeEffect.defaultDepth)
+                                    onVolumeChange(1.0f)
                                 },
                                 modifier = Modifier
                                     .align(Alignment.End)
                                     .testTag("reset_params_button")
                             ) {
-                                Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text("Réinitialiser")
                             }
@@ -299,13 +349,15 @@ fun StudioScreen(
         }
 
         item {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(18.dp))
         }
     }
 }
 
 @Composable
 private fun StatusAndDeviceBar(engineState: AudioEngineState) {
+    val rateKhz = String.format(Locale.getDefault(), "%.1f kHz", engineState.sampleRate / 1000f)
+
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -320,24 +372,41 @@ private fun StatusAndDeviceBar(engineState: AudioEngineState) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                val dotColor = when {
+                    engineState.isRecording -> Color.Red
+                    engineState.isRunning -> EmeraldGreen
+                    else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)
+                }
                 Surface(
                     shape = CircleShape,
-                    color = if (engineState.isRunning) EmeraldGreen else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
-                    modifier = Modifier.size(12.dp)
+                    color = dotColor,
+                    modifier = Modifier.size(11.dp)
                 ) {}
 
                 Spacer(modifier = Modifier.width(10.dp))
 
-                Text(
-                    text = if (engineState.isRunning) {
-                        stringResource(R.string.studio_status_active)
-                    } else {
-                        stringResource(R.string.studio_status_ready)
-                    },
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Column {
+                    Text(
+                        text = when {
+                            engineState.isRecording -> stringResource(R.string.studio_status_recording)
+                            engineState.isRunning -> stringResource(R.string.studio_status_active)
+                            else -> stringResource(R.string.studio_status_ready)
+                        },
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "$rateKhz • ~${engineState.latencyMs} ms",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             Surface(
@@ -368,13 +437,89 @@ private fun StatusAndDeviceBar(engineState: AudioEngineState) {
 }
 
 @Composable
+private fun MicInputMeter(level: Float, isActive: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Mic,
+            contentDescription = null,
+            tint = if (isActive && level > 0.02f) EmeraldGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "Micro",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        LinearProgressIndicator(
+            progress = { if (isActive) level.coerceIn(0f, 1f) else 0f },
+            modifier = Modifier
+                .weight(1f)
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp)),
+            color = when {
+                level > 0.85f -> MaterialTheme.colorScheme.error
+                level > 0.1f -> EmeraldGreen
+                else -> MaterialTheme.colorScheme.primary
+            },
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun ErrorAlertCard(message: String, onDismiss: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.ErrorOutline,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Fermer",
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun PrimaryControlBar(
+    isListening: Boolean,
     isRunning: Boolean,
     isRecording: Boolean,
     sessionSeconds: Long,
     recordingSeconds: Long,
-    onStart: () -> Unit,
-    onStop: () -> Unit,
+    onStartListening: () -> Unit,
+    onStopListening: () -> Unit,
     onStartRecord: () -> Unit,
     onStopRecord: () -> Unit
 ) {
@@ -385,16 +530,16 @@ private fun PrimaryControlBar(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Start / Stop Live Audio Button
+        // Live Listening Button
         Button(
-            onClick = if (isRunning) onStop else onStart,
+            onClick = if (isRunning) onStopListening else onStartListening,
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (isRunning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                containerColor = if (isRunning && !isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
             ),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .weight(1f)
-                .height(54.dp)
+                .height(58.dp)
                 .testTag("toggle_studio_audio_button")
         ) {
             Icon(
@@ -405,7 +550,8 @@ private fun PrimaryControlBar(
             Column {
                 Text(
                     text = if (isRunning) stringResource(R.string.studio_btn_stop) else stringResource(R.string.studio_btn_start),
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1
                 )
                 if (isRunning) {
                     Text(
@@ -426,7 +572,7 @@ private fun PrimaryControlBar(
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .weight(1f)
-                .height(54.dp)
+                .height(58.dp)
                 .testTag("toggle_studio_record_button")
         ) {
             Icon(
@@ -438,7 +584,8 @@ private fun PrimaryControlBar(
             Column {
                 Text(
                     text = if (isRecording) stringResource(R.string.studio_btn_stop_record) else stringResource(R.string.studio_btn_record),
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1
                 )
                 if (isRecording) {
                     Text(
@@ -452,31 +599,179 @@ private fun PrimaryControlBar(
 }
 
 @Composable
-private fun FeedbackWarningBanner() {
+private fun InstantRecordingPreviewCard(
+    recording: RecordingEntity,
+    isPlaying: Boolean,
+    progress: Float,
+    onPlayPause: () -> Unit,
+    onOpenLibrary: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val durationSec = recording.durationMs / 1000
+    val durationStr = String.format(Locale.getDefault(), "%02d:%02d", durationSec / 60, durationSec % 60)
+
     Card(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
-            contentColor = MaterialTheme.colorScheme.onErrorContainer
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
         ),
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("instant_recording_preview_card")
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = EmeraldGreen,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.studio_last_recording_title),
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Fermer",
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clickable(onClick = onPlayPause)
+                        .testTag("preview_play_pause_button")
+                ) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "Pause" else "Écouter",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(10.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = recording.title,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "$durationStr • ${recording.effectName}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (isPlaying || progress > 0f) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                        )
+                    }
+                }
+
+                TextButton(onClick = onOpenLibrary) {
+                    Icon(
+                        imageVector = Icons.Default.Folder,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Gérer")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpeakerStudioOptionsCard(
+    monitorDuringRecording: Boolean,
+    antiFeedbackActive: Boolean,
+    onToggleMonitorDuringRecording: (Boolean) -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = stringResource(R.string.studio_feedback_warning),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer
-            )
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (antiFeedbackActive) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.studio_speaker_mode_tip),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.studio_monitor_toggle_title),
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = stringResource(R.string.studio_monitor_toggle_desc),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Switch(
+                    checked = monitorDuringRecording,
+                    onCheckedChange = onToggleMonitorDuringRecording,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.testTag("toggle_monitor_during_recording")
+                )
+            }
         }
     }
 }
@@ -495,7 +790,7 @@ private fun EffectMiniTab(
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-        border = androidx.compose.foundation.BorderStroke(1.5.dp, borderColor),
+        border = BorderStroke(1.5.dp, borderColor),
         modifier = Modifier
             .clickable(onClick = onClick)
             .testTag("tab_effect_${effect.id}")

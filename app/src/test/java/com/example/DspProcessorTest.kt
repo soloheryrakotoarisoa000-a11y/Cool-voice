@@ -128,4 +128,29 @@ class DspProcessorTest {
         assertEquals(0.5f, dsp.pitchFactor, 0.001f)
         assertEquals(1.0f, dsp.intensity, 0.001f)
     }
+
+    @Test
+    fun testSpeakerAntiFeedbackAnd48kHzSupport() {
+        val dsp48k = DspProcessor(sampleRate = 48000.0f)
+        dsp48k.speakerAntiFeedback = true
+        dsp48k.setEffect(VoiceEffect.ECHO)
+
+        val bufferSize = 1024
+        val speechInput = ShortArray(bufferSize)
+        for (i in 0 until bufferSize) {
+            val angle = 2.0 * PI * 350.0 * i / 48000.0
+            speechInput[i] = (sin(angle) * 18000.0).toInt().toShort()
+        }
+
+        val speechOutput = ShortArray(bufferSize)
+        val speechPeak = dsp48k.processBlock(speechInput, speechOutput, bufferSize)
+        assertTrue("Speech in speaker mode must remain loud and clear", speechPeak > 0.25f)
+
+        // Quiet room hum below gate threshold should be attenuated
+        dsp48k.reset()
+        val noiseInput = ShortArray(bufferSize) { 50 }
+        val noiseOutput = ShortArray(bufferSize)
+        val noisePeak = dsp48k.processBlock(noiseInput, noiseOutput, bufferSize)
+        assertTrue("Quiet ambient noise should be gated in speaker mode", noisePeak < 0.05f)
+    }
 }
